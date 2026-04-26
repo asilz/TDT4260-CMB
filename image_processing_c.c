@@ -1,260 +1,238 @@
+#include "ppm.h"
 #include <math.h>
-#include <string.h>
 #include <stdlib.h>
 
-#include <omp.h>
+void blur(const PPMImage *imageIn, PPMImage *result, int size, int size2)
+{
+    // Iterate over each pixel
+    double *bufs[3];
+    int bufIndex = 0;
+    bufs[0] = malloc(sizeof(bufs[0][0]) * 3 * imageIn->height * imageIn->width * 3);
+    bufs[1] = bufs[0] + 3 * imageIn->height * imageIn->width;
+    bufs[2] = bufs[1] + 3 * imageIn->height * imageIn->width;
 
-#include "ppm.h"
+    for (int i = 0; i < 5; ++i)
+    {
+        // printf("%d, %d, %d, %d\n", imageIn->pixels[1920 * 1080 * 3 - 4], imageIn->pixels[1920 * 1080 * 3 - 3], imageIn->pixels[1920 * 1080 * 3 - 2], imageIn->pixels[1920 * 1080 * 3 - 1]);
+        for (int senterX = 0; senterX < imageIn->width; senterX++)
+        {
+            for (int senterY = 0; senterY < imageIn->height; senterY++)
+            {
+                double sumRed = 0.0;
+                double sumGreen = 0.0;
+                double sumBlue = 0.0;
+                int countIncluded = 0;
+                for (int x = -size; x <= size; x++)
+                {
 
-// Image from:
-// http://7-themes.com/6971875-funny-flowers-pictures.html
+                    for (int y = -size; y <= size; y++)
+                    {
+                        int currentX = senterX + x;
+                        int currentY = senterY + y;
 
-typedef struct {
-     double red,green,blue;
-} AccuratePixel;
+                        // Check if we are outside the bounds
+                        if (currentX < 0)
+                            continue;
+                        if (currentX >= imageIn->width)
+                            continue;
+                        if (currentY < 0)
+                            continue;
+                        if (currentY >= imageIn->height)
+                            continue;
 
-typedef struct {
-     int x, y;
-     AccuratePixel *data;
-} AccurateImage;
+                        // Now we can begin
+                        int offsetOfThePixel = (imageIn->width * currentY + currentX);
+                        if (i == 0)
+                        {
+                            sumRed += imageIn->pixels[offsetOfThePixel * 3];
+                            sumGreen += imageIn->pixels[offsetOfThePixel * 3 + 1];
+                            sumBlue += imageIn->pixels[offsetOfThePixel * 3 + 2];
+                        }
+                        else
+                        {
+                            sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
+                            sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
+                            sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
+                        }
 
-// Convert ppm to high precision format.
-AccurateImage *convertToAccurateImage(PPMImage *image) {
-	// Make a copy
-	AccurateImage *imageAccurate;
-	imageAccurate = (AccurateImage *)malloc(sizeof(AccurateImage));
-	imageAccurate->data = (AccuratePixel*)malloc(image->x * image->y * sizeof(AccuratePixel));
-	for(int i = 0; i < image->x * image->y; i++) {
-		imageAccurate->data[i].red   = (double) image->data[i].red;
-		imageAccurate->data[i].green = (double) image->data[i].green;
-		imageAccurate->data[i].blue  = (double) image->data[i].blue;
-	}
-	imageAccurate->x = image->x;
-	imageAccurate->y = image->y;
-	
-	return imageAccurate;
-}
+                        // Keep track of how many values we have included
+                        countIncluded++;
+                    }
+                }
 
-PPMImage * convertToPPPMImage(AccurateImage *imageIn) {
-    PPMImage *imageOut;
-    imageOut = (PPMImage *)malloc(sizeof(PPMImage));
-    imageOut->data = (PPMPixel*)malloc(imageIn->x * imageIn->y * sizeof(PPMPixel));
-
-    imageOut->x = imageIn->x;
-    imageOut->y = imageIn->y;
-
-    for(int i = 0; i < imageIn->x * imageIn->y; i++) {
-        imageOut->data[i].red = imageIn->data[i].red;
-        imageOut->data[i].green = imageIn->data[i].green;
-        imageOut->data[i].blue = imageIn->data[i].blue;
+                // Update the output image
+                int offsetOfThePixel = (result->width * senterY + senterX);
+                bufs[bufIndex][offsetOfThePixel * 3] = sumRed / countIncluded;
+                bufs[bufIndex][offsetOfThePixel * 3 + 1] = sumGreen / countIncluded;
+                bufs[bufIndex][offsetOfThePixel * 3 + 2] = sumBlue / countIncluded;
+            }
+        }
+        printf("%f, %f, %f, %f\n", bufs[bufIndex][1920 * 1080 * 3 - 4], bufs[bufIndex][1920 * 1080 * 3 - 3], bufs[bufIndex][1920 * 1080 * 3 - 2], bufs[bufIndex][1920 * 1080 * 3 - 1]);
+        bufIndex = ~bufIndex & 1;
     }
-    return imageOut;
+
+    bufIndex = 0;
+    size = size2;
+
+    for (int i = 0; i < 5; ++i)
+    {
+        for (int senterX = 0; senterX < imageIn->width; senterX++)
+        {
+            for (int senterY = 0; senterY < imageIn->height; senterY++)
+            {
+                double sumRed = 0.0;
+                double sumGreen = 0.0;
+                double sumBlue = 0.0;
+                int countIncluded = 0;
+                for (int x = -size; x <= size; x++)
+                {
+
+                    for (int y = -size; y <= size; y++)
+                    {
+                        int currentX = senterX + x;
+                        int currentY = senterY + y;
+
+                        // Check if we are outside the bounds
+                        if (currentX < 0)
+                            continue;
+                        if (currentX >= imageIn->width)
+                            continue;
+                        if (currentY < 0)
+                            continue;
+                        if (currentY >= imageIn->height)
+                            continue;
+
+                        // Now we can begin
+                        int offsetOfThePixel = (imageIn->width * currentY + currentX);
+                        if (i == 0)
+                        {
+                            sumRed += imageIn->pixels[offsetOfThePixel * 3];
+                            sumGreen += imageIn->pixels[offsetOfThePixel * 3 + 1];
+                            sumBlue += imageIn->pixels[offsetOfThePixel * 3 + 2];
+                        }
+                        else
+                        {
+                            sumRed += bufs[(~bufIndex & 1) + 1][offsetOfThePixel * 3];
+                            sumGreen += bufs[(~bufIndex & 1) + 1][offsetOfThePixel * 3 + 1];
+                            sumBlue += bufs[(~bufIndex & 1) + 1][offsetOfThePixel * 3 + 2];
+                        }
+
+                        // Keep track of how many values we have included
+                        countIncluded++;
+                    }
+                }
+
+                // Update the output image
+                int offsetOfThePixel = (result->width * senterY + senterX);
+                bufs[bufIndex + 1][offsetOfThePixel * 3] = sumRed / countIncluded;
+                bufs[bufIndex + 1][offsetOfThePixel * 3 + 1] = sumGreen / countIncluded;
+                bufs[bufIndex + 1][offsetOfThePixel * 3 + 2] = sumBlue / countIncluded;
+            }
+        }
+        bufIndex = ~bufIndex & 1;
+    }
+    // 2073400
+    for (int i = 0; i < imageIn->width * imageIn->height; i++)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            double value = (bufs[1][i * 3 + j] - bufs[0][i * 3 + j]);
+            // printf("%d value = %f\n", i, value);
+            // if (i == imageIn->width * imageIn->height / 2)
+            //{
+            //     return;
+            // }
+            if (value > 255)
+                result->pixels[i * 3 + j] = 255;
+            else if (value < -1.0)
+            {
+                value = 257.0 + value;
+                if (value > 255)
+                    result->pixels[i * 3 + j] = 255;
+                else
+                    result->pixels[i * 3 + j] = floor(value);
+            }
+            else if (value > -1.0 && value < 0.0)
+            {
+                result->pixels[i * 3 + j] = 0;
+            }
+            else
+            {
+                result->pixels[i * 3 + j] = floor(value);
+            }
+        }
+    }
+    printf("%d, %d, %d, %d\n", result->pixels[1920 * 720 * 3 - 4], result->pixels[1920 * 720 * 3 - 3], result->pixels[1920 * 720 * 3 - 2], result->pixels[1920 * 720 * 3 - 1]);
+
+    free(bufs[0]);
 }
 
-// blur one color channel
-void blurIteration(AccurateImage *imageOut, AccurateImage *imageIn, int colourType, int size) {
-	
-	// Iterate over each pixel
-	for(int senterX = 0; senterX < imageIn->x; senterX++) {
-
-		for(int senterY = 0; senterY < imageIn->y; senterY++) {
-
-			// For each pixel we compute the magic number
-			double sum = 0;
-			int countIncluded = 0;
-			for(int x = -size; x <= size; x++) {
-
-				for(int y = -size; y <= size; y++) {
-					int currentX = senterX + x;
-					int currentY = senterY + y;
-
-					// Check if we are outside the bounds
-					if(currentX < 0)
-						continue;
-					if(currentX >= imageIn->x)
-						continue;
-					if(currentY < 0)
-						continue;
-					if(currentY >= imageIn->y)
-						continue;
-
-					// Now we can begin
-					int numberOfValuesInEachRow = imageIn->x;
-					int offsetOfThePixel = (numberOfValuesInEachRow * currentY + currentX);
-					if(colourType == 0)
-						sum += imageIn->data[offsetOfThePixel].red;
-					if(colourType == 1)
-						sum += imageIn->data[offsetOfThePixel].green;
-					if(colourType == 2)
-						sum += imageIn->data[offsetOfThePixel].blue;
-
-					// Keep track of how many values we have included
-					countIncluded++;
-				}
-
-			}
-
-			// Now we compute the final value
-			double value = sum / countIncluded;
-
-
-			// Update the output image
-			int numberOfValuesInEachRow = imageOut->x; // R, G and B
-			int offsetOfThePixel = (numberOfValuesInEachRow * senterY + senterX);
-			if(colourType == 0)
-				imageOut->data[offsetOfThePixel].red = value;
-			if(colourType == 1)
-				imageOut->data[offsetOfThePixel].green = value;
-			if(colourType == 2)
-				imageOut->data[offsetOfThePixel].blue = value;
-		}
-
-	}
-	
+void blur2(const PPMImage *imageIn, PPMImage *results)
+{
 }
 
-
-// Perform the final step, and return it as ppm.
-PPMImage * imageDifference(AccurateImage *imageInSmall, AccurateImage *imageInLarge) {
-	PPMImage *imageOut;
-	imageOut = (PPMImage *)malloc(sizeof(PPMImage));
-	imageOut->data = (PPMPixel*)malloc(imageInSmall->x * imageInSmall->y * sizeof(PPMPixel));
-	
-	imageOut->x = imageInSmall->x;
-	imageOut->y = imageInSmall->y;
-
-	for(int i = 0; i < imageInSmall->x * imageInSmall->y; i++) {
-		double value = (imageInLarge->data[i].red - imageInSmall->data[i].red);
-		if(value > 255)
-			imageOut->data[i].red = 255;
-		else if (value < -1.0) {
-			value = 257.0+value;
-			if(value > 255)
-				imageOut->data[i].red = 255;
-			else
-				imageOut->data[i].red = floor(value);
-		} else if (value > -1.0 && value < 0.0) {
-			imageOut->data[i].red = 0;
-		} else {
-			imageOut->data[i].red = floor(value);
-		}
-
-		value = (imageInLarge->data[i].green - imageInSmall->data[i].green);
-		if(value > 255)
-			imageOut->data[i].green = 255;
-		else if (value < -1.0) {
-			value = 257.0+value;
-			if(value > 255)
-				imageOut->data[i].green = 255;
-			else
-				imageOut->data[i].green = floor(value);
-		} else if (value > -1.0 && value < 0.0) {
-			imageOut->data[i].green = 0;
-		} else {
-			imageOut->data[i].green = floor(value);
-		}
-
-		value = (imageInLarge->data[i].blue - imageInSmall->data[i].blue);
-		if(value > 255)
-			imageOut->data[i].blue = 255;
-		else if (value < -1.0) {
-			value = 257.0+value;
-			if(value > 255)
-				imageOut->data[i].blue = 255;
-			else
-				imageOut->data[i].blue = floor(value);
-		} else if (value > -1.0 && value < 0.0) {
-			imageOut->data[i].blue = 0;
-		} else {
-			imageOut->data[i].blue = floor(value);
-		}
-	}
-	return imageOut;
-}
-
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     // read image
-    PPMImage *image;
+    PPMImage image;
     // select where to read the image from
-    if(argc > 1) {
+    if (argc > 1)
+    {
         // from file for debugging (with argument)
-        image = readPPM("flower.ppm");
-    } else {
+        FILE *file = fopen("flower.ppm", "rb");
+        readStreamPPM(&image, file);
+        fclose(file);
+    }
+    else
+    {
         // from stdin for cmb
-        image = readStreamPPM(stdin);
+        readStreamPPM(&image, stdin);
     }
-	
-	
-	AccurateImage *imageAccurate1_tiny = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_tiny = convertToAccurateImage(image);
-	
-	// Process the tiny case:
-	for(int colour = 0; colour < 3; colour++) {
-		int size = 2;
-        blurIteration(imageAccurate2_tiny, imageAccurate1_tiny, colour, size);
-        blurIteration(imageAccurate1_tiny, imageAccurate2_tiny, colour, size);
-        blurIteration(imageAccurate2_tiny, imageAccurate1_tiny, colour, size);
-        blurIteration(imageAccurate1_tiny, imageAccurate2_tiny, colour, size);
-        blurIteration(imageAccurate2_tiny, imageAccurate1_tiny, colour, size);
-	}
-	
-	
-	AccurateImage *imageAccurate1_small = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_small = convertToAccurateImage(image);
-	
-	// Process the small case:
-	for(int colour = 0; colour < 3; colour++) {
-		int size = 3;
-        blurIteration(imageAccurate2_small, imageAccurate1_small, colour, size);
-        blurIteration(imageAccurate1_small, imageAccurate2_small, colour, size);
-        blurIteration(imageAccurate2_small, imageAccurate1_small, colour, size);
-        blurIteration(imageAccurate1_small, imageAccurate2_small, colour, size);
-        blurIteration(imageAccurate2_small, imageAccurate1_small, colour, size);
-	}
 
-    // an intermediate step can be saved for debugging like this
-//    writePPM("imageAccurate2_tiny.ppm", convertToPPPMImage(imageAccurate2_tiny));
-	
-	AccurateImage *imageAccurate1_medium = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_medium = convertToAccurateImage(image);
-	
-	// Process the medium case:
-	for(int colour = 0; colour < 3; colour++) {
-		int size = 5;
-        blurIteration(imageAccurate2_medium, imageAccurate1_medium, colour, size);
-        blurIteration(imageAccurate1_medium, imageAccurate2_medium, colour, size);
-        blurIteration(imageAccurate2_medium, imageAccurate1_medium, colour, size);
-        blurIteration(imageAccurate1_medium, imageAccurate2_medium, colour, size);
-        blurIteration(imageAccurate2_medium, imageAccurate1_medium, colour, size);
-	}
-	
-	AccurateImage *imageAccurate1_large = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_large = convertToAccurateImage(image);
-	
-	// Do each color channel
-	for(int colour = 0; colour < 3; colour++) {
-		int size = 8;
-        blurIteration(imageAccurate2_large, imageAccurate1_large, colour, size);
-        blurIteration(imageAccurate1_large, imageAccurate2_large, colour, size);
-        blurIteration(imageAccurate2_large, imageAccurate1_large, colour, size);
-        blurIteration(imageAccurate1_large, imageAccurate2_large, colour, size);
-        blurIteration(imageAccurate2_large, imageAccurate1_large, colour, size);
-	}
-	// calculate difference
-	PPMImage *final_tiny = imageDifference(imageAccurate2_tiny, imageAccurate2_small);
-    PPMImage *final_small = imageDifference(imageAccurate2_small, imageAccurate2_medium);
-    PPMImage *final_medium = imageDifference(imageAccurate2_medium, imageAccurate2_large);
-	// Save the images.
-    if(argc > 1) {
-        writePPM("flower_tiny.ppm", final_tiny);
-        writePPM("flower_small.ppm", final_small);
-        writePPM("flower_medium.ppm", final_medium);
-    } else {
-        writeStreamPPM(stdout, final_tiny);
-        writeStreamPPM(stdout, final_small);
-        writeStreamPPM(stdout, final_medium);
+    PPMImage result;
+    result.height = image.height;
+    result.width = image.width;
+    result.pixels = malloc(result.height * result.width * 3);
+
+    // Process the tiny case:
+
+    blur(&image, &result, 2, 3);
+    // return 0;
+
+    if (argc > 1)
+    {
+        FILE *file = fopen("flower_tiny.ppm", "wb");
+        writeStreamPPM(&result, file);
+        fclose(file);
     }
-	
+    else
+    {
+        writeStreamPPM(&result, stdout);
+    }
+
+    blur(&image, &result, 3, 5);
+
+    if (argc > 1)
+    {
+        FILE *file = fopen("flower_small.ppm", "wb");
+        writeStreamPPM(&result, file);
+        fclose(file);
+    }
+    else
+    {
+        writeStreamPPM(&result, stdout);
+    }
+
+    blur(&image, &result, 5, 8);
+
+    if (argc > 1)
+    {
+        FILE *file = fopen("flower_medium.ppm", "wb");
+        writeStreamPPM(&result, file);
+        fclose(file);
+    }
+    else
+    {
+        writeStreamPPM(&result, stdout);
+    }
 }
-

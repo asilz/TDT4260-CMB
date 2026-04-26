@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include "ppm.h"
+#include "ppm_old.h"
 
 
 // Compute the final image

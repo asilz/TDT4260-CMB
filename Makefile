@@ -26,10 +26,10 @@ EXECUTABLE:=image_processing_$(VERSION)
 $(EXECUTABLE): image_processing_$(VERSION).o ppm.o
 	$(LD) $^ -o $@ $(LDFLAGS)
 
-image_processing_reference: image_processing_reference.o ppm.o
+image_processing_reference: image_processing_reference.o ppm_old.o
 	$(LD) $^ -o $@ $(LDFLAGS)
 
-checker: checker.o ppm.o
+checker: checker.o ppm_old.o
 	$(LD) $^ -o $@ $(LDFLAGS)
 
 checker_small: checker_small.o

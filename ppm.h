@@ -2,17 +2,10 @@
 
 typedef struct
 {
-     unsigned char red, green, blue;
-} PPMPixel;
-
-typedef struct
-{
-     int x, y;
-     PPMPixel *data;
+    int width;
+    int height;
+    unsigned char *pixels;
 } PPMImage;
 
-void readStreamPPM(PPMImage *result, FILE *fp);
-void readPPM(PPMImage *result, const char *filename);
-void writeStreamPPM(FILE *fp, PPMImage *img);
-void writePPM(const char *filename, PPMImage *img);
-void changeColorPPM(PPMImage *img);
+int readStreamPPM(PPMImage *result, FILE *fp);
+int writeStreamPPM(PPMImage *img, FILE *fp);

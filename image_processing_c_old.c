@@ -2,28 +2,17 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "ppm_old.h"
+#include <omp.h>
+
+#include "ppm.h"
 
 // Image from:
 // http://7-themes.com/6971875-funny-flowers-pictures.html
 
-typedef struct
-{
-	double red, green, blue;
-} AccuratePixel;
-
-typedef struct
-{
-	int x, y;
-	AccuratePixel *data;
-} AccurateImage;
-
 // Convert ppm to high precision format.
-AccurateImage *convertToAccurateImage(PPMImage *image)
+void convertToAccurateImage(AccurateImage *imageAccurate, PPMImage *image)
 {
 	// Make a copy
-	AccurateImage *imageAccurate;
-	imageAccurate = (AccurateImage *)malloc(sizeof(AccurateImage));
 	imageAccurate->data = (AccuratePixel *)malloc(image->x * image->y * sizeof(AccuratePixel));
 	for (int i = 0; i < image->x * image->y; i++)
 	{
@@ -35,6 +24,24 @@ AccurateImage *convertToAccurateImage(PPMImage *image)
 	imageAccurate->y = image->y;
 
 	return imageAccurate;
+}
+
+PPMImage *convertToPPPMImage(AccurateImage *imageIn)
+{
+	PPMImage *imageOut;
+	imageOut = (PPMImage *)malloc(sizeof(PPMImage));
+	imageOut->data = (PPMPixel *)malloc(imageIn->x * imageIn->y * sizeof(PPMPixel));
+
+	imageOut->x = imageIn->x;
+	imageOut->y = imageIn->y;
+
+	for (int i = 0; i < imageIn->x * imageIn->y; i++)
+	{
+		imageOut->data[i].red = imageIn->data[i].red;
+		imageOut->data[i].green = imageIn->data[i].green;
+		imageOut->data[i].blue = imageIn->data[i].blue;
+	}
+	return imageOut;
 }
 
 // blur one color channel
@@ -175,13 +182,26 @@ PPMImage *imageDifference(AccurateImage *imageInSmall, AccurateImage *imageInLar
 	return imageOut;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	PPMImage *image;
-	image = readPPM("flower.ppm");
+	// read image
+	PPMImage image;
+	AccurateImage imageAccurate1_tiny;
+	AccurateImage imageAccurate2_tiny;
+	// select where to read the image from
+	if (argc > 1)
+	{
+		// from file for debugging (with argument)
+		readPPM(&image, "flower.ppm");
+	}
+	else
+	{
+		// from stdin for cmb
+		readStreamPPM(&image, stdin);
+	}
 
-	AccurateImage *imageAccurate1_tiny = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_tiny = convertToAccurateImage(image);
+	convertToAccurateImage(&imageAccurate1_tiny, &image);
+	convertToAccurateImage(&imageAccurate1_tiny, &image);
 
 	// Process the tiny case:
 	for (int colour = 0; colour < 3; colour++)
@@ -194,8 +214,8 @@ int main()
 		blurIteration(imageAccurate2_tiny, imageAccurate1_tiny, colour, size);
 	}
 
-	AccurateImage *imageAccurate1_small = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_small = convertToAccurateImage(image);
+	AccurateImage *imageAccurate1_small = convertToAccurateImage(&image);
+	AccurateImage *imageAccurate2_small = convertToAccurateImage(&image);
 
 	// Process the small case:
 	for (int colour = 0; colour < 3; colour++)
@@ -208,8 +228,11 @@ int main()
 		blurIteration(imageAccurate2_small, imageAccurate1_small, colour, size);
 	}
 
-	AccurateImage *imageAccurate1_medium = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_medium = convertToAccurateImage(image);
+	// an intermediate step can be saved for debugging like this
+	//    writePPM("imageAccurate2_tiny.ppm", convertToPPPMImage(imageAccurate2_tiny));
+
+	AccurateImage *imageAccurate1_medium = convertToAccurateImage(&image);
+	AccurateImage *imageAccurate2_medium = convertToAccurateImage(&image);
 
 	// Process the medium case:
 	for (int colour = 0; colour < 3; colour++)
@@ -222,8 +245,8 @@ int main()
 		blurIteration(imageAccurate2_medium, imageAccurate1_medium, colour, size);
 	}
 
-	AccurateImage *imageAccurate1_large = convertToAccurateImage(image);
-	AccurateImage *imageAccurate2_large = convertToAccurateImage(image);
+	AccurateImage *imageAccurate1_large = convertToAccurateImage(&image);
+	AccurateImage *imageAccurate2_large = convertToAccurateImage(&image);
 
 	// Do each color channel
 	for (int colour = 0; colour < 3; colour++)
@@ -235,14 +258,21 @@ int main()
 		blurIteration(imageAccurate1_large, imageAccurate2_large, colour, size);
 		blurIteration(imageAccurate2_large, imageAccurate1_large, colour, size);
 	}
-
-	// Save the images.
+	// calculate difference
 	PPMImage *final_tiny = imageDifference(imageAccurate2_tiny, imageAccurate2_small);
-	writePPM("flower_tiny_correct.ppm", final_tiny);
-
 	PPMImage *final_small = imageDifference(imageAccurate2_small, imageAccurate2_medium);
-	writePPM("flower_small_correct.ppm", final_small);
-
 	PPMImage *final_medium = imageDifference(imageAccurate2_medium, imageAccurate2_large);
-	writePPM("flower_medium_correct.ppm", final_medium);
+	// Save the images.
+	if (argc > 1)
+	{
+		writePPM("flower_tiny.ppm", final_tiny);
+		writePPM("flower_small.ppm", final_small);
+		writePPM("flower_medium.ppm", final_medium);
+	}
+	else
+	{
+		writeStreamPPM(stdout, final_tiny);
+		writeStreamPPM(stdout, final_small);
+		writeStreamPPM(stdout, final_medium);
+	}
 }
