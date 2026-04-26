@@ -90,6 +90,7 @@ int main(int argc, char **argv)
     result.pixels = malloc(result.height * result.width * 3);
 
     double *bufs[3];
+    double *tmp;
     int bufIndex = 0;
     bufs[0] = malloc(sizeof(bufs[0][0]) * 3 * image.height * image.width * 3);
     bufs[1] = bufs[0] + 3 * image.height * image.width;
@@ -116,7 +117,9 @@ int main(int argc, char **argv)
         writeStreamPPM(&result, stdout);
     }
 
-    blur2(&image, 3, bufs);
+    tmp = bufs[0];
+    bufs[0] = bufs[1];
+    bufs[1] = tmp;
     blur2(&image, 5, bufs + 1);
     for (int i = 0; i < image.width * image.height * 3; i++)
     {
@@ -134,7 +137,9 @@ int main(int argc, char **argv)
         writeStreamPPM(&result, stdout);
     }
 
-    blur2(&image, 5, bufs);
+    tmp = bufs[0];
+    bufs[0] = bufs[1];
+    bufs[1] = tmp;
     blur2(&image, 8, bufs + 1);
     for (int i = 0; i < image.width * image.height * 3; i++)
     {
