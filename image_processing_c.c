@@ -227,4 +227,6 @@ int main(int argc, char **argv)
     {
         writeStreamPPM(&result, stdout);
     }
+
+    return 0;
 }
