@@ -133,9 +133,30 @@ static void blur2(const PPMImage *imageIn, int size, double **bufs)
 
 static void diff(PPMImage *result, double **bufs)
 {
-    for (int i = 0; i < result->width * result->height * 3; i++)
+    for (int i = 0; i < result->width * result->height; i++)
     {
-        result->pixels[i] = bufs[1][i] - bufs[0][i];
+        for (int j = 0; j < 3; ++j)
+        {
+            double value = (bufs[1][i * 3 + j] - bufs[0][i * 3 + j]);
+            if (value > 255)
+                result->pixels[i * 3 + j] = 255;
+            else if (value < -1.0)
+            {
+                value = 257.0 + value;
+                if (value > 255)
+                    result->pixels[i * 3 + j] = 255;
+                else
+                    result->pixels[i * 3 + j] = floor(value);
+            }
+            else if (value > -1.0 && value < 0.0)
+            {
+                result->pixels[i * 3 + j] = 0;
+            }
+            else
+            {
+                result->pixels[i * 3 + j] = floor(value);
+            }
+        }
     }
 }
 

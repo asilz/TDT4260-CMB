@@ -23,7 +23,7 @@ int readStreamPPM(PPMImage *result, FILE *fp)
 
     return 0;
 }
-int writeStreamPPM(PPMImage *img, FILE *fp)
+int writeStreamPPM(const PPMImage *img, FILE *fp)
 {
     fwrite("P6\n", sizeof("P6\n") - 1, 1, fp);
     fprintf(fp, "%d %d\n", img->width, img->height);

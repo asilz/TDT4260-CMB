@@ -8,4 +8,4 @@ typedef struct
 } PPMImage;
 
 int readStreamPPM(PPMImage *result, FILE *fp);
-int writeStreamPPM(PPMImage *img, FILE *fp);
+int writeStreamPPM(const PPMImage *img, FILE *fp);
