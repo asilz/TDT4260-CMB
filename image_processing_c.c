@@ -2,16 +2,20 @@
 #include <math.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <string.h>
 
-static void blur32(const PPMImage *imageIn, int size, uint32_t **bufs)
+typedef uint32_t uint_t;
+typedef float f_t;
+
+static void blur32(int size, uint_t **bufs, int width, int height)
 {
     int bufIndex = 0;
     for (int i = 0; i < 5; ++i)
     {
         // printf("%d, %d, %d, %d\n", imageIn->pixels[1920 * 1080 * 3 - 4], imageIn->pixels[1920 * 1080 * 3 - 3], imageIn->pixels[1920 * 1080 * 3 - 2], imageIn->pixels[1920 * 1080 * 3 - 1]);
-        for (int senterX = 0; senterX < imageIn->width; senterX++)
+        for (int senterX = 0; senterX < width; senterX++)
         {
-            for (int senterY = 0; senterY < imageIn->height; senterY++)
+            for (int senterY = 0; senterY < height; senterY++)
             {
                 uint64_t sumRed = 0;
                 uint64_t sumGreen = 0;
@@ -28,27 +32,19 @@ static void blur32(const PPMImage *imageIn, int size, uint32_t **bufs)
                         // Check if we are outside the bounds
                         if (currentX < 0)
                             continue;
-                        if (currentX >= imageIn->width)
+                        if (currentX >= width)
                             continue;
                         if (currentY < 0)
                             continue;
-                        if (currentY >= imageIn->height)
+                        if (currentY >= height)
                             continue;
 
                         // Now we can begin
-                        int offsetOfThePixel = (imageIn->width * currentY + currentX);
-                        if (i == 0)
-                        {
-                            sumRed += (uint32_t)(imageIn->pixels[offsetOfThePixel * 3]) * (UINT32_MAX / UINT8_MAX);
-                            sumGreen += (uint32_t)(imageIn->pixels[offsetOfThePixel * 3 + 1]) * (UINT32_MAX / UINT8_MAX);
-                            sumBlue += (uint32_t)(imageIn->pixels[offsetOfThePixel * 3 + 2]) * (UINT32_MAX / UINT8_MAX);
-                        }
-                        else
-                        {
-                            sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
-                            sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
-                            sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
-                        }
+                        int offsetOfThePixel = (width * currentY + currentX);
+
+                        sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
+                        sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
+                        sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
 
                         // Keep track of how many values we have included
                         countIncluded++;
@@ -56,7 +52,7 @@ static void blur32(const PPMImage *imageIn, int size, uint32_t **bufs)
                 }
 
                 // Update the output image
-                int offsetOfThePixel = (imageIn->width * senterY + senterX);
+                int offsetOfThePixel = (width * senterY + senterX);
                 bufs[bufIndex][offsetOfThePixel * 3] = (sumRed + countIncluded / 2) / countIncluded;
                 bufs[bufIndex][offsetOfThePixel * 3 + 1] = (sumGreen + countIncluded / 2) / countIncluded;
                 bufs[bufIndex][offsetOfThePixel * 3 + 2] = (sumBlue + countIncluded / 2) / countIncluded;
@@ -67,19 +63,19 @@ static void blur32(const PPMImage *imageIn, int size, uint32_t **bufs)
     }
 }
 
-static void blur2(const PPMImage *imageIn, int size, double **bufs)
+static void blur2(int size, f_t **bufs, int width, int height)
 {
     int bufIndex = 0;
     for (int i = 0; i < 5; ++i)
     {
         // printf("%d, %d, %d, %d\n", imageIn->pixels[1920 * 1080 * 3 - 4], imageIn->pixels[1920 * 1080 * 3 - 3], imageIn->pixels[1920 * 1080 * 3 - 2], imageIn->pixels[1920 * 1080 * 3 - 1]);
-        for (int senterX = 0; senterX < imageIn->width; senterX++)
+        for (int senterX = 0; senterX < width; senterX++)
         {
-            for (int senterY = 0; senterY < imageIn->height; senterY++)
+            for (int senterY = 0; senterY < height; senterY++)
             {
-                double sumRed = 0.0;
-                double sumGreen = 0.0;
-                double sumBlue = 0.0;
+                f_t sumRed = 0.0;
+                f_t sumGreen = 0.0;
+                f_t sumBlue = 0.0;
                 int countIncluded = 0;
                 for (int x = -size; x <= size; x++)
                 {
@@ -92,27 +88,19 @@ static void blur2(const PPMImage *imageIn, int size, double **bufs)
                         // Check if we are outside the bounds
                         if (currentX < 0)
                             continue;
-                        if (currentX >= imageIn->width)
+                        if (currentX >= width)
                             continue;
                         if (currentY < 0)
                             continue;
-                        if (currentY >= imageIn->height)
+                        if (currentY >= height)
                             continue;
 
                         // Now we can begin
-                        int offsetOfThePixel = (imageIn->width * currentY + currentX);
-                        if (i == 0)
-                        {
-                            sumRed += imageIn->pixels[offsetOfThePixel * 3];
-                            sumGreen += imageIn->pixels[offsetOfThePixel * 3 + 1];
-                            sumBlue += imageIn->pixels[offsetOfThePixel * 3 + 2];
-                        }
-                        else
-                        {
-                            sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
-                            sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
-                            sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
-                        }
+                        int offsetOfThePixel = (width * currentY + currentX);
+
+                        sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
+                        sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
+                        sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
 
                         // Keep track of how many values we have included
                         countIncluded++;
@@ -120,7 +108,7 @@ static void blur2(const PPMImage *imageIn, int size, double **bufs)
                 }
 
                 // Update the output image
-                int offsetOfThePixel = (imageIn->width * senterY + senterX);
+                int offsetOfThePixel = (width * senterY + senterX);
                 bufs[bufIndex][offsetOfThePixel * 3] = sumRed / countIncluded;
                 bufs[bufIndex][offsetOfThePixel * 3 + 1] = sumGreen / countIncluded;
                 bufs[bufIndex][offsetOfThePixel * 3 + 2] = sumBlue / countIncluded;
@@ -131,13 +119,29 @@ static void blur2(const PPMImage *imageIn, int size, double **bufs)
     }
 }
 
-static void diff(PPMImage *result, double **bufs)
+static void toDoubleBuffer(const PPMImage *imageIn, f_t *buf)
+{
+    for (int i = 0; i < imageIn->height * imageIn->width * 3; ++i)
+    {
+        buf[i] = imageIn->pixels[i];
+    }
+}
+
+static void to32Buffer(const PPMImage *imageIn, uint_t *buf)
+{
+    for (int i = 0; i < imageIn->height * imageIn->width * 3; ++i)
+    {
+        buf[i] = (uint_t)(imageIn->pixels[i]) * (UINT32_MAX / UINT8_MAX);
+    }
+}
+
+static void diff(PPMImage *result, f_t **bufs)
 {
     for (int i = 0; i < result->width * result->height; i++)
     {
         for (int j = 0; j < 3; ++j)
         {
-            double value = (bufs[1][i * 3 + j] - bufs[0][i * 3 + j]);
+            f_t value = (bufs[1][i * 3 + j] - bufs[0][i * 3 + j]);
             if (value > 255)
                 result->pixels[i * 3 + j] = 255;
             else if (value < -1.0)
@@ -160,11 +164,28 @@ static void diff(PPMImage *result, double **bufs)
     }
 }
 
-static void diff32(PPMImage *result, uint32_t **bufs)
+static void diff32(PPMImage *result, uint_t **bufs)
 {
-    for (int i = 0; i < result->width * result->height * 3; i++)
+    for (int i = 0; i < result->width * result->height; i++)
     {
-        result->pixels[i] = (bufs[1][i] - bufs[0][i]) / (UINT32_MAX / UINT8_MAX);
+        for (int j = 0; j < 3; ++j)
+        {
+            int32_t value = (bufs[1][i * 3 + j] - bufs[0][i * 3 + j]) / (UINT32_MAX / UINT8_MAX);
+            if (value > 255)
+                result->pixels[i * 3 + j] = 255;
+            else if (value < 0)
+            {
+                value = 257 + value;
+                if (value > 255)
+                    result->pixels[i * 3 + j] = 255;
+                else
+                    result->pixels[i * 3 + j] = value;
+            }
+            else
+            {
+                result->pixels[i * 3 + j] = value;
+            }
+        }
     }
 }
 
@@ -191,17 +212,21 @@ int main(int argc, char **argv)
     result.width = image.width;
     result.pixels = malloc(result.height * result.width * 3);
 
-    double *bufs[3];
-    double *tmp;
+    f_t *bufs[3];
+    f_t *tmp;
     int bufIndex = 0;
-    bufs[0] = malloc(sizeof(bufs[0][0]) * 3 * image.height * image.width * 3);
+    bufs[0] = malloc(sizeof(bufs[0][0]) * 4 * image.height * image.width * 3);
     bufs[1] = bufs[0] + 3 * image.height * image.width;
     bufs[2] = bufs[1] + 3 * image.height * image.width;
+    f_t *imageDouble = bufs[2] + 3 * image.height * image.width;
 
     // Process the tiny case:
 
-    blur2(&image, 2, bufs);
-    blur2(&image, 3, bufs + 1);
+    toDoubleBuffer(&image, imageDouble);
+    memcpy(bufs[1], imageDouble, 3 * image.height * image.width * sizeof(bufs[0][0]));
+    blur2(2, bufs, image.width, image.height);
+    memcpy(bufs[2], imageDouble, 3 * image.height * image.width * sizeof(bufs[0][0]));
+    blur2(3, bufs + 1, image.width, image.height);
     diff(&result, bufs);
     // return 0;
 
@@ -219,7 +244,8 @@ int main(int argc, char **argv)
     tmp = bufs[0];
     bufs[0] = bufs[1];
     bufs[1] = tmp;
-    blur2(&image, 5, bufs + 1);
+    memcpy(bufs[2], imageDouble, 3 * image.height * image.width * sizeof(bufs[0][0]));
+    blur2(5, bufs + 1, image.width, image.height);
     diff(&result, bufs);
 
     if (argc > 1)
@@ -236,7 +262,8 @@ int main(int argc, char **argv)
     tmp = bufs[0];
     bufs[0] = bufs[1];
     bufs[1] = tmp;
-    blur2(&image, 8, bufs + 1);
+    memcpy(bufs[2], imageDouble, 3 * image.height * image.width * sizeof(bufs[0][0]));
+    blur2(8, bufs + 1, image.width, image.height);
     diff(&result, bufs);
     if (argc > 1)
     {
