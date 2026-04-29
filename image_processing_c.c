@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <omp.h>
 
 typedef uint32_t uint_t;
 typedef float f_t;
@@ -21,6 +22,7 @@ static void blur32(int size, uint_t **bufs, int width, int height)
                 uint64_t sumGreen = 0;
                 uint64_t sumBlue = 0;
                 int countIncluded = 0;
+#pragma omp parallel for schedule(static, 16)
                 for (int x = -size; x <= size; x++)
                 {
 
@@ -68,52 +70,54 @@ static void blur2(int size, f_t **bufs, int width, int height)
     int bufIndex = 0;
     for (int i = 0; i < 5; ++i)
     {
-        // printf("%d, %d, %d, %d\n", imageIn->pixels[1920 * 1080 * 3 - 4], imageIn->pixels[1920 * 1080 * 3 - 3], imageIn->pixels[1920 * 1080 * 3 - 2], imageIn->pixels[1920 * 1080 * 3 - 1]);
-        for (int senterX = 0; senterX < width; senterX++)
-        {
-            for (int senterY = 0; senterY < height; senterY++)
+// printf("%d, %d, %d, %d\n", imageIn->pixels[1920 * 1080 * 3 - 4], imageIn->pixels[1920 * 1080 * 3 - 3], imageIn->pixels[1920 * 1080 * 3 - 2], imageIn->pixels[1920 * 1080 * 3 - 1]);
+#pragma omp parallel for schedule(static, 16)
+        for (int senterY = 0; senterY < height; senterY++)
+            for (int senterX = 0; senterX < width; senterX++)
             {
-                f_t sumRed = 0.0;
-                f_t sumGreen = 0.0;
-                f_t sumBlue = 0.0;
-                int countIncluded = 0;
-                for (int x = -size; x <= size; x++)
+
                 {
-
-                    for (int y = -size; y <= size; y++)
+                    f_t sumRed = 0.0;
+                    f_t sumGreen = 0.0;
+                    f_t sumBlue = 0.0;
+                    int countIncluded = 0;
+                    for (int x = -size; x <= size; x++)
                     {
-                        int currentX = senterX + x;
-                        int currentY = senterY + y;
 
-                        // Check if we are outside the bounds
-                        if (currentX < 0)
-                            continue;
-                        if (currentX >= width)
-                            continue;
-                        if (currentY < 0)
-                            continue;
-                        if (currentY >= height)
-                            continue;
+                        for (int y = -size; y <= size; y++)
+                        {
+                            int currentX = senterX + x;
+                            int currentY = senterY + y;
 
-                        // Now we can begin
-                        int offsetOfThePixel = (width * currentY + currentX);
+                            // Check if we are outside the bounds
+                            if (currentX < 0)
+                                continue;
+                            if (currentX >= width)
+                                continue;
+                            if (currentY < 0)
+                                continue;
+                            if (currentY >= height)
+                                continue;
 
-                        sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
-                        sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
-                        sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
+                            // Now we can begin
+                            int offsetOfThePixel = (width * currentY + currentX);
 
-                        // Keep track of how many values we have included
-                        countIncluded++;
+                            sumRed += bufs[~bufIndex & 1][offsetOfThePixel * 3];
+                            sumGreen += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 1];
+                            sumBlue += bufs[~bufIndex & 1][offsetOfThePixel * 3 + 2];
+
+                            // Keep track of how many values we have included
+                            countIncluded++;
+                        }
                     }
-                }
 
-                // Update the output image
-                int offsetOfThePixel = (width * senterY + senterX);
-                bufs[bufIndex][offsetOfThePixel * 3] = sumRed / countIncluded;
-                bufs[bufIndex][offsetOfThePixel * 3 + 1] = sumGreen / countIncluded;
-                bufs[bufIndex][offsetOfThePixel * 3 + 2] = sumBlue / countIncluded;
+                    // Update the output image
+                    int offsetOfThePixel = (width * senterY + senterX);
+                    bufs[bufIndex][offsetOfThePixel * 3] = sumRed / countIncluded;
+                    bufs[bufIndex][offsetOfThePixel * 3 + 1] = sumGreen / countIncluded;
+                    bufs[bufIndex][offsetOfThePixel * 3 + 2] = sumBlue / countIncluded;
+                }
             }
-        }
         // printf("%f, %f, %f, %f\n", bufs[bufIndex][1920 * 1080 * 3 - 4], bufs[bufIndex][1920 * 1080 * 3 - 3], bufs[bufIndex][1920 * 1080 * 3 - 2], bufs[bufIndex][1920 * 1080 * 3 - 1]);
         bufIndex = ~bufIndex & 1;
     }
